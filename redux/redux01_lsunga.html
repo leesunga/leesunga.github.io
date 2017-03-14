@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <title>redux test</title>
+  </head>
+  <body>
+    <div>
+      <input id="counter" type="text" name="" value="0" readonly>
+      <button type="button" name="button" data-role="COUNTER_UP" data-value="1">+</button>
+      <button type="button" name="button" data-role="COUNTER_DOWN" data-value="1">-</button>
+    </div>
+
+    <script src="js/redux.js"></script>
+    <script>
+    const initState = {
+      counter: 0
+    };
+      
+    const reducer = (state = initState, action) => {
+      switch (action.type) {
+        case 'COUNTER_UP':
+          Object.assign(state, {counter: state.counter + action.value, total: state.total + action.value});
+          break;
+        case 'COUNTER_DOWN':
+          Object.assign(state, {counter: state.counter - action.value, total: state.total - action.value});
+          break;
+      }
+      return state;
+    }
+    
+    const store = Redux.createStore(reducer);
+    
+    const elCounter = document.querySelector('#counter');
+    const render = () => {
+      // console.log(store.getState());
+      elCounter.value = store.getState().counter;
+    };
+    
+    store.subscribe(render);
+    
+    document.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        store.dispatch({ type: btn.getAttribute('data-role'), value: parseInt(btn.getAttribute('data-value'))});
+      });
+    });
+    </script>
+  </body>
+</html>
