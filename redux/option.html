@@ -44,6 +44,86 @@
       }
     });
     
+    /*
+    const initState = {
+      changeDepth: 1,
+      isLastDepth: false,
+      depth: 2,
+      optionInfo: [{
+        isSelectBox: true,
+        selectIndex: 0,
+        depth: 1,
+        title: '선택',
+        value: '',
+        options: [
+          {
+            value: '1',
+            title: '1',
+            contents: {
+              isSelectBox: true,
+              selectIndex: 0,
+              depth: 2,
+              title: '1선택',
+              value: '',
+              options: [
+                {
+                  value: '1_1',
+                  title: '1_1',
+                },
+                {
+                  value: '1_2',
+                  title: '1_2',
+                }
+              ],
+            }
+          },
+          {
+            value: '2',
+            title: '2',
+            contents: {
+              isSelectBox: true,
+              selectIndex: 0,
+              depth: 2,
+              title: '2선택',
+              value: '',
+              options: [
+                {
+                  value: '2_1',
+                  title: '2_1',
+                },
+                {
+                  value: '2_2',
+                  title: '2_2',
+                }
+              ],
+            }
+          },
+          {
+            value: '3',
+            title: '3',
+            contents: {
+              isSelectBox: true,
+              selectIndex: 0,
+              depth: 2,
+              title: '3선택',
+              value: '',
+              options: [
+                {
+                  value: '3_1',
+                  title: '3_1',
+                },
+                {
+                  value: '3_2',
+                  title: '3_2',
+                }
+              ],
+            }
+          }
+        ],
+      }],
+    };
+    */
+   
     const initState = {
       changeDepth: 1,
       isLastDepth: false,
@@ -134,7 +214,27 @@
       switch (action.type) {
         
         case 'OPTION_INIT':
-          return state;
+          
+          if (state.depth > 1) {
+            
+            let newState = Object.assign({}, state);
+            
+            let pushOption = function (optionInfo) {
+              if (optionInfo.options[0].contents) {
+                newState.optionInfo.push(optionInfo.options[0].contents);
+              }
+            };
+            
+            for (let i = 1; i < state.depth; i++) {
+              pushOption(newState.optionInfo[i - 1]);
+            }
+            
+            return newState;
+          } else {
+            
+            return state;
+          }
+          
         
         case 'OPTION_CHANGE':
           let actionDepth = parseInt(action.changeDepth);
@@ -157,7 +257,6 @@
             if (myOptions.contents) {
               newState.optionInfo.push(myOptions.contents);
             } else {
-              
               newState.isLastDepth = true;
             }
           }
