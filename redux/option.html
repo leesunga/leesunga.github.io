@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <title>option test</title>
+    <style>
+      body * {margin:0;padding:0;font-size:1em;line-height:2em;}
+    </style>
+  </head>
+  <body>
+    <div data-role="optionContainer"></div>
+    
+    <script id="optionTemplate" type="text/x-handlebars-template">
+      {{#optionInfo}}
+        {{#if isSelectBox}}
+        <select data-role="optionBox" data-depth="{{ depth }}">
+          <option value="">{{ title }}</option>
+          {{#options}}
+          <option value="{{ value }}"{{isSelected ../selectIndex @index}}>{{ title }}</option>
+          {{/options}}
+        </select>
+        {{/if}}
+        
+        {{#if isTextBox}}
+        <input type="text" value="{{ value }}" placeholder="{{ title }}" data-role="optionBox" data-depth="{{ depth }}" />
+        {{/if}}
+      {{/optionInfo}}
+    </script>
+    <script src="js/jquery-1.12.1.min.js"></script>
+    <script src="js/handlebars.min.js"></script>
+    <script src="js/redux.js"></script>
+    <script>
+    const optionContainer = $('[data-role=optionContainer]');
+    const optionTemplate = Handlebars.compile($('#optionTemplate').html());
+    
+    Handlebars.registerHelper('isSelected', function (selectIndex, index, options) {
+      let listIndex = index + 1;
+      if (selectIndex === listIndex) {
+        return new Handlebars.SafeString(' selected');
+      } else {
+        return '';
+      }
+    });
+    
+    const initState = {
+      changeDepth: 1,
+      isLastDepth: false,
+      optionInfo: [{
+        isSelectBox: true,
+        selectIndex: 0,
+        depth: 1,
+        title: '선택',
+        value: '',
+        options: [
+          {
+            value: '1',
+            title: '1',
+            contents: {
+              isSelectBox: true,
+              selectIndex: 0,
+              depth: 2,
+              title: '1옵션',
+              value: '',
+              options: [
+                {
+                  value: '1_1',
+                  title: '1_1',
+                  contents: {
+                    isSelectBox: true,
+                    selectIndex: 0,
+                    depth: 3,
+                    title: '1마지막?',
+                    value: '',
+                    options: [
+                      {
+                        value: '1_1_1',
+                        title: '1_1_1',
+                      },
+                      {
+                        value: '1_1_2',
+                        title: '1_1_2',
+                        contents: {
+                          isTextBox: true,
+                          depth: 4,
+                          title: '1진짜 마지막 옵션',
+                          value: '',
+                        },
+                      }
+                    ],
+                  },
+                },
+                {
+                  value: '1_2',
+                  title: '1_2',
+                }
+              ],
+            },
+          },
+          {
+            contentsDepth: 1,
+            value: '2',
+            title: '2',
+            contents: {
+              isSelectBox: true,
+              selectIndex: 0,
+              depth: 2,
+              title: '2선택',
+              value: '',
+              options: [
+                {
+                  value: '2_1',
+                  title: '2_1',
+                },
+                {
+                  value: '2_2',
+                  title: '2_2',
+                }
+              ],
+            }
+          },
+          {
+            contentsDepth: 1,
+            value: '3',
+            title: '3',
+          }
+        ],
+      }],
+    };
+    
+    const reducer = (state = initState, action) => {
+      
+      switch (action.type) {
+        
+        case 'OPTION_INIT':
+          return state;
+        
+        case 'OPTION_CHANGE':
+          let actionDepth = parseInt(action.changeDepth);
+          
+          let newState = Object.assign({}, state, 
+            {changeDepth: actionDepth},
+            {
+              optionInfo: [
+                ...state.optionInfo.slice(0, actionDepth - 1),
+                Object.assign({}, state.optionInfo[actionDepth - 1], {selectIndex: action.index, value: action.value}),
+              ]
+            }
+          );
+          
+          if (action.index) {
+            let myOptions = newState.optionInfo[actionDepth - 1].options[action.index - 1] || {};            
+            
+            newState.isLastDepth = false;
+            
+            if (myOptions.contents) {
+              newState.optionInfo.push(myOptions.contents);
+            } else {
+              
+              newState.isLastDepth = true;
+            }
+          }
+          
+          return newState;
+          
+        default:
+          return state;
+      }
+    }
+    
+    const store = Redux.createStore(reducer);
+
+    const render = () => {
+      // console.log('getState', store.getState());
+      optionContainer.html(optionTemplate(store.getState()));
+      
+      let optionBox = optionContainer.find('[data-role=optionBox]');
+      
+      optionBox.on('change', (e) => {
+        store.dispatch({ type: 'OPTION_CHANGE', changeDepth: $(e.target).attr('data-depth'), index: e.target.selectedIndex, value: e.target.value});
+      });
+      
+      if (store.getState().isLastDepth) {
+        optionContainer.append('<div>선택 완료!</div>')
+      }
+    };
+    
+    store.subscribe(render);
+    store.dispatch({ type: 'OPTION_INIT'});
+
+    </script>
+  </body>
+</html>

@@ -22,13 +22,12 @@
     const reducer = (state = initState, action) => {
       switch (action.type) {
         case 'COUNTER_UP':
-          Object.assign(state, {counter: state.counter + action.value, total: state.total + action.value});
-          break;
+          return Object.assign({}, state, {counter: state.counter + action.value, total: state.total + action.value});
         case 'COUNTER_DOWN':
-          Object.assign(state, {counter: state.counter - action.value, total: state.total - action.value});
-          break;
+          return Object.assign({}, state, {counter: state.counter - action.value, total: state.total - action.value});
+        default:
+          return state;
       }
-      return state;
     }
     
     const store = Redux.createStore(reducer);
