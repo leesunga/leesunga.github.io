@@ -15,7 +15,7 @@
     <script id="optionTemplate" type="text/x-handlebars-template">
       {{#optionInfo}}
         {{#if isSelectBox}}
-        <select data-role="optionBox" data-depth="{{ depth }}">
+        <select data-role="optionBox" data-depth="{{ depth }}"{{#if isDisabled}}disabled{{/if}}>
           <option value="">{{ title }}</option>
           {{#options}}
           <option value="{{ value }}"{{isSelected ../selectIndex @index}}>{{ title }}</option>
@@ -44,16 +44,17 @@
       }
     });
     
-    /*
     const initState = {
       changeDepth: 1,
       isLastDepth: false,
-      depth: 2,
+      depth: 1,
+      // kind: ['첫번째', '두번째', '세번째', '네번째'],
       optionInfo: [{
         isSelectBox: true,
         selectIndex: 0,
+        isDisabled: false,
         depth: 1,
-        title: '선택',
+        title: '첫번째',
         value: '',
         options: [
           {
@@ -62,86 +63,9 @@
             contents: {
               isSelectBox: true,
               selectIndex: 0,
+              isDisabled: false,
               depth: 2,
-              title: '1선택',
-              value: '',
-              options: [
-                {
-                  value: '1_1',
-                  title: '1_1',
-                },
-                {
-                  value: '1_2',
-                  title: '1_2',
-                }
-              ],
-            }
-          },
-          {
-            value: '2',
-            title: '2',
-            contents: {
-              isSelectBox: true,
-              selectIndex: 0,
-              depth: 2,
-              title: '2선택',
-              value: '',
-              options: [
-                {
-                  value: '2_1',
-                  title: '2_1',
-                },
-                {
-                  value: '2_2',
-                  title: '2_2',
-                }
-              ],
-            }
-          },
-          {
-            value: '3',
-            title: '3',
-            contents: {
-              isSelectBox: true,
-              selectIndex: 0,
-              depth: 2,
-              title: '3선택',
-              value: '',
-              options: [
-                {
-                  value: '3_1',
-                  title: '3_1',
-                },
-                {
-                  value: '3_2',
-                  title: '3_2',
-                }
-              ],
-            }
-          }
-        ],
-      }],
-    };
-    */
-   
-    const initState = {
-      changeDepth: 1,
-      isLastDepth: false,
-      optionInfo: [{
-        isSelectBox: true,
-        selectIndex: 0,
-        depth: 1,
-        title: '선택',
-        value: '',
-        options: [
-          {
-            value: '1',
-            title: '1',
-            contents: {
-              isSelectBox: true,
-              selectIndex: 0,
-              depth: 2,
-              title: '1옵션',
+              title: '두번째',
               value: '',
               options: [
                 {
@@ -150,8 +74,9 @@
                   contents: {
                     isSelectBox: true,
                     selectIndex: 0,
+                    isDisabled: false,
                     depth: 3,
-                    title: '1마지막?',
+                    title: '세번째?',
                     value: '',
                     options: [
                       {
@@ -164,7 +89,7 @@
                         contents: {
                           isTextBox: true,
                           depth: 4,
-                          title: '1진짜 마지막 옵션',
+                          title: '네번째',
                           value: '',
                         },
                       }
@@ -179,14 +104,14 @@
             },
           },
           {
-            contentsDepth: 1,
             value: '2',
             title: '2',
             contents: {
               isSelectBox: true,
               selectIndex: 0,
+              isDisabled: false,
               depth: 2,
-              title: '2선택',
+              title: '두번째',
               value: '',
               options: [
                 {
@@ -201,7 +126,6 @@
             }
           },
           {
-            contentsDepth: 1,
             value: '3',
             title: '3',
           }
@@ -211,25 +135,42 @@
     
     const reducer = (state = initState, action) => {
       
+      const pushOptionBox = (newState, action) => {
+        
+        const actionDepth = parseInt(action.changeDepth) || 1;
+        
+        if (newState.depth > 1 && newState.kind) {
+          for (let i = newState.optionInfo.length; i < newState.depth; i++) {
+            newState.optionInfo.push({
+              isSelectBox: true,
+              selectIndex: 0,
+              depth: 1,
+              title: newState.kind[i] || '선택',
+              value: '',
+              isDisabled: true,
+            });
+          }
+        }
+        
+        return newState;
+      }
+      
       switch (action.type) {
         
         case 'OPTION_INIT':
           
           if (state.depth > 1) {
             
-            let newState = Object.assign({}, state);
+            const actionDepth = parseInt(action.changeDepth) || 1;
+            const newState = Object.assign({}, state, {optionInfo: [
+              ...state.optionInfo.slice(0, actionDepth - 1),
+              Object.assign(state.optionInfo[actionDepth - 1], {title: state.kind[actionDepth - 1]})
+            ]});
             
-            let pushOption = function (optionInfo) {
-              if (optionInfo.options[0].contents) {
-                newState.optionInfo.push(optionInfo.options[0].contents);
-              }
-            };
-            
-            for (let i = 1; i < state.depth; i++) {
-              pushOption(newState.optionInfo[i - 1]);
-            }
+            pushOptionBox(newState, action);
             
             return newState;
+            
           } else {
             
             return state;
@@ -237,8 +178,7 @@
           
         
         case 'OPTION_CHANGE':
-          let actionDepth = parseInt(action.changeDepth);
-          
+          const actionDepth = parseInt(action.changeDepth);
           let newState = Object.assign({}, state, 
             {changeDepth: actionDepth},
             {
@@ -250,7 +190,7 @@
           );
           
           if (action.index) {
-            let myOptions = newState.optionInfo[actionDepth - 1].options[action.index - 1] || {};            
+            const myOptions = newState.optionInfo[actionDepth - 1].options[action.index - 1] || {};            
             
             newState.isLastDepth = false;
             
@@ -260,6 +200,8 @@
               newState.isLastDepth = true;
             }
           }
+          
+          pushOptionBox(newState, action);
           
           return newState;
           
@@ -274,12 +216,6 @@
       // console.log('getState', store.getState());
       optionContainer.html(optionTemplate(store.getState()));
       
-      let optionBox = optionContainer.find('[data-role=optionBox]');
-      
-      optionBox.on('change', (e) => {
-        store.dispatch({ type: 'OPTION_CHANGE', changeDepth: $(e.target).attr('data-depth'), index: e.target.selectedIndex, value: e.target.value});
-      });
-      
       if (store.getState().isLastDepth) {
         optionContainer.append('<div>선택 완료!</div>')
       }
@@ -287,6 +223,10 @@
     
     store.subscribe(render);
     store.dispatch({ type: 'OPTION_INIT'});
+    
+    optionContainer.on('change', (e) => {
+      store.dispatch({ type: 'OPTION_CHANGE', changeDepth: e.target.getAttribute('data-depth'), index: e.target.selectedIndex, value: e.target.value});
+    });
 
     </script>
   </body>
