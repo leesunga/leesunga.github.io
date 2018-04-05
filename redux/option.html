@@ -7,10 +7,15 @@
     <title>option test</title>
     <style>
       body * {margin:0;padding:0;font-size:1em;line-height:2em;}
+      .optionResult li {overflow:hidden;margin:10px 0 0;padding:5px 10px;background:#fafafa;}
+      .counter {float:right}
+      .counter input[type="text"] {width:40px;text-align:center;}
+      .counter button {padding:0 10px;}
     </style>
   </head>
   <body>
     <div data-role="optionContainer"></div>
+    <div data-role="resultContainer"></div>
     
     <script id="optionTemplate" type="text/x-handlebars-template">
       {{#optionInfo}}
@@ -18,7 +23,7 @@
         <select data-role="optionBox" data-depth="{{ depth }}"{{#if isDisabled}}disabled{{/if}}>
           <option value="">{{ title }}</option>
           {{#options}}
-          <option value="{{ value }}"{{isSelected ../selectIndex @index}}>{{ title }}</option>
+          <option value="{{ value }}"{{isSelected ../value}}>{{ title }}</option>
           {{/options}}
         </select>
         {{/if}}
@@ -28,16 +33,34 @@
         {{/if}}
       {{/optionInfo}}
     </script>
+    <script id="resultTemplate" type="text/x-handlebars-template">
+      <ul class="optionResult">
+        {{#resultInfo}}
+          <li data-role="optionItem">
+            {{#data}}
+            <span>{{ title }} : {{ value }}</span>
+              {{#unless @last}}, {{/unless}}
+            {{/data}}
+            <p class="counter">
+              <input type="text" value="{{ count }}" />
+              <button type="button" data-role="UP" data-index="{{ @index }}">+</button>
+              <button type="button" data-role="DOWN" data-index="{{ @index }}">-</button>
+            </p>
+          </li>
+        {{/resultInfo}}
+      </ul>
+    </script>
     <script src="js/jquery-1.12.1.min.js"></script>
     <script src="js/handlebars.min.js"></script>
     <script src="js/redux.js"></script>
     <script>
     const optionContainer = $('[data-role=optionContainer]');
+    const resultContainer = $('[data-role=resultContainer]');
     const optionTemplate = Handlebars.compile($('#optionTemplate').html());
+    const resultTemplate = Handlebars.compile($('#resultTemplate').html());
     
-    Handlebars.registerHelper('isSelected', function (selectIndex, index, options) {
-      let listIndex = index + 1;
-      if (selectIndex === listIndex) {
+    Handlebars.registerHelper('isSelected', function (selectVal) {
+      if (selectVal === this.value) {
         return new Handlebars.SafeString(' selected');
       } else {
         return '';
@@ -46,12 +69,13 @@
     
     const initState = {
       changeDepth: 1,
+      optionId: '',
       isLastDepth: false,
-      depth: 1,
+      // depth: 2,
       // kind: ['첫번째', '두번째', '세번째', '네번째'],
+      resultInfo: [],
       optionInfo: [{
         isSelectBox: true,
-        selectIndex: 0,
         isDisabled: false,
         depth: 1,
         title: '첫번째',
@@ -62,7 +86,6 @@
             title: '1',
             contents: {
               isSelectBox: true,
-              selectIndex: 0,
               isDisabled: false,
               depth: 2,
               title: '두번째',
@@ -73,10 +96,9 @@
                   title: '1_1',
                   contents: {
                     isSelectBox: true,
-                    selectIndex: 0,
                     isDisabled: false,
                     depth: 3,
-                    title: '세번째?',
+                    title: '세번째',
                     value: '',
                     options: [
                       {
@@ -91,6 +113,7 @@
                           depth: 4,
                           title: '네번째',
                           value: '',
+                          isLastDepth: true,
                         },
                       }
                     ],
@@ -108,11 +131,11 @@
             title: '2',
             contents: {
               isSelectBox: true,
-              selectIndex: 0,
               isDisabled: false,
               depth: 2,
               title: '두번째',
               value: '',
+              isLastDepth: true,
               options: [
                 {
                   value: '2_1',
@@ -162,14 +185,14 @@
           if (state.depth > 1) {
             
             const actionDepth = parseInt(action.changeDepth) || 1;
-            const newState = Object.assign({}, state, {optionInfo: [
+            const initState = Object.assign({}, state, {optionInfo: [
               ...state.optionInfo.slice(0, actionDepth - 1),
               Object.assign(state.optionInfo[actionDepth - 1], {title: state.kind[actionDepth - 1]})
             ]});
             
-            pushOptionBox(newState, action);
+            pushOptionBox(initState, action);
             
-            return newState;
+            return initState;
             
           } else {
             
@@ -178,9 +201,11 @@
           
         
         case 'OPTION_CHANGE':
+        
           const actionDepth = parseInt(action.changeDepth);
-          let newState = Object.assign({}, state, 
-            {changeDepth: actionDepth},
+          
+          let changeState = Object.assign({}, state, 
+            {changeDepth: actionDepth, isLastDepth: false},
             {
               optionInfo: [
                 ...state.optionInfo.slice(0, actionDepth - 1),
@@ -189,21 +214,74 @@
             }
           );
           
+          // changeState.optionId.spilt('').map(function (s, idx) {
+          //   if (idx === action.index) {
+          //     
+          //   } else {
+          //     
+          //   }
+          // });
+          
+          const myContents = changeState.optionInfo[actionDepth - 1];
+          let myOptions = {};
+          
           if (action.index) {
-            const myOptions = newState.optionInfo[actionDepth - 1].options[action.index - 1] || {};            
-            
-            newState.isLastDepth = false;
+            myOptions = myContents.options[action.index - 1];
             
             if (myOptions.contents) {
-              newState.optionInfo.push(myOptions.contents);
-            } else {
-              newState.isLastDepth = true;
-            }
+              changeState.optionInfo.push(myOptions.contents);
+            } 
           }
           
-          pushOptionBox(newState, action);
+          if (!myOptions.contents || myContents.isLastDepth) {
+            
+            let tempResult = { id: '', count: 0, data: [] };
+            changeState.optionInfo.map(function (selectInfo) {
+              tempResult.data.push({title: selectInfo.title, value: selectInfo.value});
+            });
+            changeState.resultInfo.push(tempResult);
+            changeState.isLastDepth = true;
+          }
           
-          return newState;
+          pushOptionBox(changeState, action);
+          
+          return changeState;
+        
+        case 'UP':
+        
+          const upIndex = parseInt(action.index);
+
+          return Object.assign({}, state,
+            {
+              resultInfo: [
+                ...state.resultInfo.slice(0, upIndex),
+                Object.assign({}, state.resultInfo[upIndex], { count: state.resultInfo[upIndex].count + 1 }),
+                ...state.resultInfo.slice(upIndex + 1),
+              ]
+            }
+          );
+          
+        case 'DOWN':
+        
+          const downIndex = parseInt(action.index);
+          
+          let downState = Object.assign({}, state,
+            {
+              resultInfo: [
+                ...state.resultInfo.slice(0, downIndex),
+                Object.assign({}, state.resultInfo[downIndex], { count: state.resultInfo[downIndex].count - 1 }),
+                ...state.resultInfo.slice(downIndex + 1),
+              ]
+            }
+          );
+          
+          // count 0 이하이면 제거
+          const itemCount = downState.resultInfo[downIndex].count - 1;
+          if (itemCount < 0) {
+            downState.resultInfo.splice(downIndex, 1);
+          }
+          
+          return downState;
           
         default:
           return state;
@@ -217,7 +295,7 @@
       optionContainer.html(optionTemplate(store.getState()));
       
       if (store.getState().isLastDepth) {
-        optionContainer.append('<div>선택 완료!</div>')
+        resultContainer.html(resultTemplate(store.getState()));
       }
     };
     
@@ -226,6 +304,10 @@
     
     optionContainer.on('change', (e) => {
       store.dispatch({ type: 'OPTION_CHANGE', changeDepth: e.target.getAttribute('data-depth'), index: e.target.selectedIndex, value: e.target.value});
+    });
+    
+    resultContainer.on('click', (e) => {
+      store.dispatch({ type: e.target.getAttribute('data-role'), index: e.target.getAttribute('data-index')});
     });
 
     </script>
